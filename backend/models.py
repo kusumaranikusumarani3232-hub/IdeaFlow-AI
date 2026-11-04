@@ -104,3 +104,4 @@ class DiscordSimulateMessage(BaseModel):
     content: str
     thread_id: Optional[str] = None
     is_agent_mention: bool = True
+

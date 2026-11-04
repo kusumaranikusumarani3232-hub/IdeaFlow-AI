@@ -249,3 +249,4 @@ def get_project_summary(project_id: str, db: Session = Depends(get_db)):
         "deliverables": [dr.to_dict() for dr in project.drafts],
         "export_ready": True
     }
+

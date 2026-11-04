@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from typing import Dict, Any
 from backend.discord_bridge import discord_bridge
-from backend.switch_hub import broadcast_switch_event
+from backend.switch_client import switch_client
 from backend.models import DiscordSimulateMessage
 from backend.config import settings
 
@@ -16,26 +16,22 @@ def get_discord_status():
 async def simulate_discord_message(data: DiscordSimulateMessage):
     """
     Simulates a message sent by a human user in Discord.
-    Dispatches directly into the Switch room event stream, demonstrating
-    the complete Discord -> Switch -> IdeaFlow Agent -> Project updates loop.
+    Dispatches directly into the Switch room message endpoint over the official protocol,
+    triggering the complete Discord -> Switch -> IdeaFlow Agent -> Project updates loop.
     """
     room_id = settings.SWITCH_ROOM_ID
-    event_payload = {
-        "type": "room.message",
-        "room_id": room_id,
-        "message_id": f"sim_discord_{int(data.content.__hash__() & 0xfffffff)}",
-        "sender": data.author,
-        "sender_type": "human",
-        "content": data.content,
-        "platform": "discord",
-        "channel_name": data.channel_name,
-        "thread_id": data.thread_id,
-        "is_agent_mention": data.is_agent_mention,
-        "is_simulated": True
-    }
-    
-    # Broadcast to Switch room SSE stream
-    await broadcast_switch_event("message", event_payload)
+    channel_id = settings.DISCORD_CHANNEL_ID or "123456789012345678"
+    msg_id = f"sim_discord_{abs(hash(data.content)) % 10000000}"
+
+    await switch_client.post_human_message_to_switch(
+        room_id=room_id,
+        content=data.content,
+        sender=data.author,
+        platform="discord",
+        channel_id=channel_id,
+        discord_message_id=msg_id,
+        thread_id=data.thread_id
+    )
 
     return {
         "status": "relayed_to_switch",
@@ -43,5 +39,5 @@ async def simulate_discord_message(data: DiscordSimulateMessage):
         "sender": data.author,
         "content": data.content,
         "channel": data.channel_name,
-        "protocol_action": "Dispatched to Switch SSE event queue"
+        "protocol_action": "Dispatched to Switch room message endpoint"
     }

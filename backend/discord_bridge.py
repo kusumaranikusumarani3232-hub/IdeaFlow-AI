@@ -3,7 +3,6 @@ import logging
 from typing import Optional, Dict, Any
 import discord
 from backend.config import settings
-from backend.switch_hub import switch_state, broadcast_switch_event
 
 logger = logging.getLogger("discord_bridge")
 
@@ -59,33 +58,26 @@ class DiscordBridge:
             is_relevant_channel = not self.channel_id or str(message.channel.id) == str(self.channel_id)
 
             if is_mention or is_relevant_channel:
-                logger.info(f"Relaying Discord message from {message.author.name} to Switch Room...")
+                logger.info(f"Real Discord message from {message.author.name} received. Relaying to Switch Room...")
                 
-                # Clean content (strip bot mention tag if needed)
                 content = message.content
                 if self.client.user:
                     content = content.replace(f"<@{self.client.user.id}>", "@IdeaFlow").strip()
 
-                # Dispatch frame into Switch room
                 room_id = settings.SWITCH_ROOM_ID
                 thread_id = str(message.channel.id) if isinstance(message.channel, discord.Thread) else None
 
-                event_payload = {
-                    "type": "room.message",
-                    "room_id": room_id,
-                    "message_id": f"discord_{message.id}",
-                    "sender": message.author.display_name or message.author.name,
-                    "sender_type": "human",
-                    "content": content,
-                    "platform": "discord",
-                    "thread_id": thread_id,
-                    "discord_message_id": str(message.id),
-                    "channel_id": str(message.channel.id),
-                    "is_agent_mention": True
-                }
-                
-                # Broadcast into Switch event bus
-                await broadcast_switch_event("message", event_payload)
+                # Relay real Discord message into Switch Room over official protocol
+                from backend.switch_client import switch_client
+                await switch_client.post_human_message_to_switch(
+                    room_id=room_id,
+                    content=content,
+                    sender=message.author.display_name or message.author.name,
+                    platform="discord",
+                    channel_id=str(message.channel.id),
+                    discord_message_id=str(message.id),
+                    thread_id=thread_id
+                )
 
         try:
             self._bot_task = asyncio.create_task(self.client.start(self.bot_token))
@@ -96,7 +88,7 @@ class DiscordBridge:
     async def send_discord_reply(self, channel_id: str, content: str, reply_to_id: Optional[str] = None):
         """Sends a message back into Discord channel/thread."""
         if not self.is_connected or not self.client:
-            logger.debug("Cannot send Discord reply: Bot not connected.")
+            logger.debug(f"Discord reply simulated (Gateway not connected): {content[:40]}...")
             return False
 
         try:
@@ -109,10 +101,12 @@ class DiscordBridge:
                     try:
                         ref_msg = await channel.fetch_message(int(reply_to_id))
                         await ref_msg.reply(content)
+                        logger.info(f"Delivered agent reply to Discord message {reply_to_id}")
                         return True
                     except Exception:
                         pass
                 await channel.send(content)
+                logger.info(f"Delivered agent reply to Discord channel {channel_id}")
                 return True
         except Exception as e:
             logger.error(f"Failed to post to Discord: {e}")

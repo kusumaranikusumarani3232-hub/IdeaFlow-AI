@@ -62,7 +62,7 @@ export default function Navbar({ activeTab, setActiveTab, switchStatus, discordS
 
         {/* Infrastructure Status Indicators */}
         <div className="flex items-center gap-2">
-          {/* Switch Status Badge */}
+          {/* Switch Status Badge with Mode distinction */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs">
             <span className="relative flex h-2 w-2">
               <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSwitchOnline ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
@@ -70,9 +70,10 @@ export default function Navbar({ activeTab, setActiveTab, switchStatus, discordS
             </span>
             <span className="text-slate-400 font-mono text-[11px]">Switch:</span>
             <span className={`font-semibold font-mono text-[11px] ${isSwitchOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {isSwitchOnline ? 'Protocol Live' : 'Connecting'}
+              {switchStatus?.is_builtin ? 'Built-in Hub' : 'External Server'}
             </span>
           </div>
+
 
           {/* Discord Status Badge */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs">
@@ -100,3 +101,4 @@ export default function Navbar({ activeTab, setActiveTab, switchStatus, discordS
     </header>
   );
 }
+

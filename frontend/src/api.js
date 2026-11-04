@@ -91,6 +91,18 @@ export async function sendManualBeat() {
   return res.json();
 }
 
+export async function updateRuntimeConfig(config) {
+  const res = await fetch(`${API_BASE}/api/switch/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config)
+  });
+  if (!res.ok) throw new Error('Failed to update runtime config');
+  return res.json();
+}
+
+
+
 export async function fetchDiscordStatus() {
   const res = await fetch(`${API_BASE}/api/discord/status`);
   if (!res.ok) throw new Error('Failed to fetch Discord status');
@@ -142,3 +154,4 @@ export async function aiGenerateScript(projectId, prompt) {
   if (!res.ok) throw new Error('Failed to generate script');
   return res.json();
 }
+

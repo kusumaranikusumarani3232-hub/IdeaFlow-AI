@@ -94,6 +94,12 @@ export default function SwitchInspector({ switchStatus, onRefreshStatus }) {
         {/* Protocol Spec Telemetry Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800 font-mono text-xs">
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+            <span className="text-slate-500 text-[10px] block">SWITCH ENGINE MODE</span>
+            <span className="text-emerald-400 font-semibold truncate block">
+              {switchStatus?.is_builtin ? '● Built-in Hub Engine' : '○ External Official Switch'}
+            </span>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
             <span className="text-slate-500 text-[10px] block">AGENT ID</span>
             <span className="text-white font-semibold truncate block">{switchStatus?.agent_id || 'agent_ideaflow_creative_01'}</span>
           </div>
@@ -105,11 +111,8 @@ export default function SwitchInspector({ switchStatus, onRefreshStatus }) {
             <span className="text-slate-500 text-[10px] block">CONNECTION MODEL</span>
             <span className="text-cyan-400 font-semibold block">{switchStatus?.connection_model || 'always_on'}</span>
           </div>
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-500 text-[10px] block">CURSOR INDEX</span>
-            <span className="text-purple-400 font-semibold block">Frame #{switchStatus?.cursor || 0}</span>
-          </div>
         </div>
+
       </div>
 
       {/* Simulator + Wire Log Grid */}
@@ -238,3 +241,4 @@ export default function SwitchInspector({ switchStatus, onRefreshStatus }) {
     </div>
   );
 }
+

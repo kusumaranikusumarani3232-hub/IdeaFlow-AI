@@ -336,3 +336,4 @@ export default function AICreativeStudio({ project, onRefreshProject }) {
     </div>
   );
 }
+

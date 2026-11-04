@@ -1,14 +1,49 @@
 import React, { useState } from 'react';
-import { Settings2, Radio, MessageSquare, Cpu, CheckCircle2, ShieldCheck, ExternalLink, RefreshCw } from 'lucide-react';
+import { Settings2, Radio, MessageSquare, Cpu, CheckCircle2, ShieldCheck, ExternalLink, RefreshCw, Key, Save } from 'lucide-react';
+import { updateRuntimeConfig } from '../api';
 
 export default function IntegrationsModal({ switchStatus, discordStatus, onRefresh }) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
+  // Runtime config form states
+  const [switchUrl, setSwitchUrl] = useState(switchStatus?.switch_url || 'http://localhost:8000/switch/api');
+  const [discordToken, setDiscordToken] = useState('');
+  const [channelId, setChannelId] = useState(discordStatus?.channel_id || '');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [aiProvider, setAiProvider] = useState(switchStatus?.ai_provider || 'auto');
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveConfig = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        switch_url: switchUrl,
+        ai_provider: aiProvider
+      };
+      if (discordToken.trim()) payload.discord_token = discordToken.trim();
+      if (channelId.trim()) payload.channel_id = channelId.trim();
+      if (geminiKey.trim()) payload.gemini_key = geminiKey.trim();
+      if (openaiKey.trim()) payload.openai_key = openaiKey.trim();
+
+      await updateRuntimeConfig(payload);
+      setSaveSuccess(true);
+      if (onRefresh) await onRefresh();
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error saving config:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleTest = async () => {
     setTesting(true);
     try {
-      await onRefresh();
+      if (onRefresh) await onRefresh();
       setTestResult({ success: true, message: 'All protocol handshakes and bridge channels verified!' });
     } catch (e) {
       setTestResult({ success: false, message: 'Connection check completed.' });
@@ -34,28 +69,74 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Switch Server Engine Distinction */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-sm font-bold text-white">Switch Protocol Engine Mode</h3>
+          </div>
+          <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full border ${
+            switchStatus?.is_builtin
+              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+              : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
+          }`}>
+            {switchStatus?.is_builtin ? '● Active: Built-in Hub Engine' : '○ Active: External Switch Server'}
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed">
+          IdeaFlow AI provides an authentic built-in Switch hub engine for immediate testing and evaluation. It can also point directly to an external self-hosted Switch server (<code>sandbox-quantum/switch</code>).
+        </p>
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setSwitchUrl('http://localhost:8000/switch/api')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
+              switchUrl.includes('/switch/api')
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+            }`}
+          >
+            Use Built-in Hub Engine (Default)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSwitchUrl('http://localhost:8000')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
+              !switchUrl.includes('/switch/api')
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+            }`}
+          >
+            Point to External Switch Server
+          </button>
+        </div>
+      </div>
+
+      {/* Configuration Form */}
+      <form onSubmit={handleSaveConfig} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Switch Core Configuration */}
         <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">Switch Open-Source Core</h3>
-            </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-              Protocol: SSE + HTTP
-            </span>
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-sm font-bold text-white">Switch Connection Endpoint</h3>
           </div>
 
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Switch acts as the central infrastructure message bus. Every Discord channel maps to a Switch Room where human teammates and AI agents collaborate side-by-side.
-          </p>
+          <div>
+            <label className="text-[11px] font-mono text-slate-400 block mb-1">SWITCH_URL</label>
+            <input
+              type="text"
+              value={switchUrl}
+              onChange={(e) => setSwitchUrl(e.target.value)}
+              placeholder="e.g. http://localhost:8000/switch/api"
+              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+              required
+            />
+          </div>
 
           <div className="space-y-2 font-mono text-xs">
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
-              <span className="text-slate-400">SWITCH_URL</span>
-              <span className="text-emerald-400">{switchStatus?.switch_url || 'http://localhost:8000/switch/api'}</span>
-            </div>
             <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
               <span className="text-slate-400">AGENT_NAME</span>
               <span className="text-white">{switchStatus?.agent_name || 'IdeaFlow Agent'}</span>
@@ -68,10 +149,6 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
               <span className="text-slate-400">SWITCH_ROOM_ID</span>
               <span className="text-purple-400">{switchStatus?.room_id || 'room_discord_nature_channel'}</span>
             </div>
-          </div>
-
-          <div className="pt-2 text-[11px] text-slate-400 leading-relaxed">
-            <strong className="text-slate-300">Self-Hosting Switch:</strong> If running against a separate Switch instance (<code>docker-compose up</code> in <code>sandbox-quantum/switch</code>), set <code>SWITCH_URL=http://localhost:8000</code> in <code>.env</code>.
           </div>
         </div>
 
@@ -89,38 +166,88 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
             </span>
           </div>
 
-          <p className="text-xs text-slate-400 leading-relaxed">
-            Binds your Discord server channels to Switch rooms. When members tag <code>@IdeaFlow</code> or post in the project channel, the message relays through Switch into the agent's SSE stream.
-          </p>
-
-          <div className="space-y-2 font-mono text-xs">
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
-              <span className="text-slate-400">GATEWAY STATUS</span>
-              <span className="text-white">{discordStatus?.status_message || 'Standby'}</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
-              <span className="text-slate-400">ACTIVE BOT USER</span>
-              <span className="text-indigo-400">{discordStatus?.bot_user || 'Not configured (Simulated)'}</span>
-            </div>
-            <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
-              <span className="text-slate-400">BOUND CHANNEL</span>
-              <span className="text-slate-300">#creative-lounge</span>
-            </div>
+          <div>
+            <label className="text-[11px] font-mono text-slate-400 block mb-1">DISCORD BOT TOKEN (OPTIONAL)</label>
+            <input
+              type="password"
+              value={discordToken}
+              onChange={(e) => setDiscordToken(e.target.value)}
+              placeholder={switchStatus?.has_discord_token ? '••••••••••••••••' : 'Enter Bot Token to connect real Discord'}
+              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+            />
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/80 space-y-1.5 text-xs">
-            <span className="text-[11px] font-mono text-slate-400 block font-semibold">TO ACTIVATE REAL DISCORD BOT:</span>
-            <ol className="list-decimal list-inside text-[11px] text-slate-300 space-y-1 leading-relaxed">
-              <li>Create Bot at <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer" className="text-indigo-400 underline inline-flex items-center gap-0.5">discord.com/developers <ExternalLink className="w-2.5 h-2.5" /></a></li>
-              <li>Enable <strong>Message Content Intent</strong> in Bot settings</li>
-              <li>Add <code>DISCORD_BOT_TOKEN=...</code> to your <code>.env</code> file</li>
-              <li>Restart backend with <code>uvicorn backend.main:app</code></li>
-            </ol>
+          <div>
+            <label className="text-[11px] font-mono text-slate-400 block mb-1">DISCORD TARGET CHANNEL ID</label>
+            <input
+              type="text"
+              value={channelId}
+              onChange={(e) => setChannelId(e.target.value)}
+              placeholder="e.g. 123456789012345678"
+              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+            />
+          </div>
+
+          <div className="space-y-1.5 font-mono text-xs">
+            <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between">
+              <span className="text-slate-400">GATEWAY STATUS</span>
+              <span className="text-white truncate">{discordStatus?.status_message || 'Standby'}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Test Connection Button */}
+        {/* AI Provider Keys */}
+        <div className="lg:col-span-2 glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Key className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white">AI Provider Keys (Optional)</h3>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300">
+              Built-in Creative Engine Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">GOOGLE GEMINI API KEY</label>
+              <input
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder={switchStatus?.has_gemini_key ? '••••••••••••••••' : 'Enter Gemini Key'}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-mono text-slate-400 block mb-1">OPENAI API KEY</label>
+              <input
+                type="password"
+                value={openaiKey}
+                onChange={(e) => setOpenaiKey(e.target.value)}
+                placeholder={switchStatus?.has_openai_key ? '••••••••••••••••' : 'Enter OpenAI Key'}
+                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-2">
+            <span className="text-[11px] text-slate-400">
+              Zero-friction evaluation: If left empty, IdeaFlow uses its built-in dynamic reasoning engine.
+            </span>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{saving ? 'Updating...' : saveSuccess ? 'Saved!' : 'Save & Apply Config'}</span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* Diagnostics */}
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex items-center justify-between">
         <div>
           <h4 className="text-sm font-bold text-white">Diagnostics & Protocol Self-Test</h4>
@@ -129,7 +256,7 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
         <button
           onClick={handleTest}
           disabled={testing}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${testing ? 'animate-spin' : ''}`} />
           <span>{testing ? 'Testing...' : 'Run Diagnostics'}</span>

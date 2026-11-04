@@ -50,3 +50,4 @@ async def generate_creative_script(data: AIGenerateRequest):
         "project_id": data.project_id,
         "script_content": result
     }
+

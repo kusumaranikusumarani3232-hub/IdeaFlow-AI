@@ -2,14 +2,14 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 from sse_starlette.sse import EventSourceResponse
 from fastapi import APIRouter, HTTPException, Header, Query, Request
+from backend.config import settings
 
 logger = logging.getLogger("switch_hub")
 
-# In-memory Switch hub state
 class SwitchHubState:
     def __init__(self):
         self.registered_agents: Dict[str, Dict[str, Any]] = {
@@ -27,10 +27,10 @@ class SwitchHubState:
         self.rooms: Dict[str, Dict[str, Any]] = {
             "room_discord_nature_channel": {
                 "id": "room_discord_nature_channel",
-                "name": "Nature & Wildlife Hub (Discord #creative-lounge)",
+                "name": "Creative Hub (#creative-lounge)",
                 "platform": "discord",
-                "channel_id": "123456789012345678",
-                "topic": "Collaborative project space for wildlife creative work",
+                "channel_id": settings.DISCORD_CHANNEL_ID or "123456789012345678",
+                "topic": "Collaborative project space for creative work",
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
         }
@@ -39,17 +39,42 @@ class SwitchHubState:
         self.cursor_counter: int = 1
         self.active_connections: Dict[str, Dict[str, Any]] = {}
 
+    def get_agent_status(self, agent_id: str) -> str:
+        agent = self.registered_agents.get(agent_id)
+        if not agent:
+            return "unknown"
+        last_beat_str = agent.get("last_beat")
+        if not last_beat_str:
+            return "disconnected"
+        try:
+            last_beat = datetime.fromisoformat(last_beat_str)
+            if datetime.now(timezone.utc) - last_beat > timedelta(seconds=25):
+                return "stale"
+            return "connected"
+        except Exception:
+            return "connected"
+
 switch_state = SwitchHubState()
 switch_router = APIRouter(prefix="/switch/api", tags=["Switch Agent Protocol"])
 
 @switch_router.get("/status")
 async def get_switch_status():
-    """Returns official Switch hub topology and active bridge telemetry."""
+    """
+    Returns official Switch hub topology, distinguishing clearly between
+    the built-in Switch Hub Engine and an external Switch server.
+    """
     active_agent_count = len(switch_state.registered_agents)
     connected_streams = len(switch_state.active_connections)
+    
+    # Update agent statuses based on heartbeat TTL
+    for aid, agent in switch_state.registered_agents.items():
+        agent["status"] = switch_state.get_agent_status(aid)
+
     return {
-        "switch_version": "Switch Core 1.4.2 (Open-Source)",
+        "switch_version": "Switch Core 1.4.2 (Built-in Embedded Hub Engine)",
+        "hub_type": "builtin_embedded",
         "protocol": "Switch Agent Protocol v1 (SSE Inbound + HTTP Outbound)",
+        "is_builtin": True,
         "status": "active",
         "registered_agents": list(switch_state.registered_agents.values()),
         "active_rooms": list(switch_state.rooms.values()),
@@ -71,21 +96,19 @@ async def register_agent(
     Auth: Bearer AGENT_REGISTRATION_TOKEN
     Body: {"name": "...", "connection_model": "always_on"}
     """
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
-    
-    agent_id = f"agent_{uuid.uuid4().hex[:8]}"
-    agent_secret = f"sec_{uuid.uuid4().hex[:16]}"
     name = payload.get("name", "IdeaFlow Agent")
     conn_model = payload.get("connection_model", "always_on")
+    
+    # Preserve preset ID if configured
+    agent_id = settings.AGENT_ID if name == settings.AGENT_NAME else f"agent_{uuid.uuid4().hex[:8]}"
+    agent_secret = settings.AGENT_SECRET if agent_id == settings.AGENT_ID else f"sec_{uuid.uuid4().hex[:16]}"
 
     agent_record = {
         "id": agent_id,
         "name": name,
         "secret": agent_secret,
         "connection_model": conn_model,
-        "status": "registered",
+        "status": "connected",
         "last_beat": datetime.now(timezone.utc).isoformat(),
         "cursor": switch_state.cursor_counter,
         "connection_id": None
@@ -113,7 +136,17 @@ async def connection_beat(
     Body: {"connection_id": "...", "cursor": 12}
     """
     if agent_id not in switch_state.registered_agents:
-        raise HTTPException(status_code=404, detail="Agent connection not found or expired")
+        # Re-register if detached per Switch protocol spec
+        switch_state.registered_agents[agent_id] = {
+            "id": agent_id,
+            "name": "IdeaFlow Agent",
+            "secret": settings.AGENT_SECRET,
+            "connection_model": "always_on",
+            "status": "connected",
+            "last_beat": datetime.now(timezone.utc).isoformat(),
+            "cursor": switch_state.cursor_counter,
+            "connection_id": payload.get("connection_id", "conn_beat")
+        }
     
     conn_id = payload.get("connection_id", "default_conn")
     cursor = payload.get("cursor", switch_state.cursor_counter)
@@ -146,11 +179,10 @@ async def agent_events_sse(
     Pushes messages, mentions, and tasks from Switch rooms down to the agent.
     """
     if agent_id not in switch_state.registered_agents:
-        # Auto-register if using preset ID
         switch_state.registered_agents[agent_id] = {
             "id": agent_id,
             "name": "IdeaFlow Agent",
-            "secret": "sec_auto",
+            "secret": settings.AGENT_SECRET,
             "connection_model": "always_on",
             "status": "connected",
             "last_beat": datetime.now(timezone.utc).isoformat(),
@@ -169,7 +201,6 @@ async def agent_events_sse(
 
     async def event_generator():
         try:
-            # Yield initial connection confirmation frame
             init_frame = {
                 "type": "switch.connected",
                 "agent_id": agent_id,
@@ -190,11 +221,9 @@ async def agent_events_sse(
                     break
                 
                 try:
-                    # Wait for next event with a periodic keepalive ping
-                    event = await asyncio.wait_for(q.get(), timeout=15.0)
+                    event = await asyncio.wait_for(q.get(), timeout=12.0)
                     yield event
                 except asyncio.TimeoutError:
-                    # Keepalive ping frame
                     yield {
                         "event": "ping",
                         "data": json.dumps({
@@ -211,7 +240,7 @@ async def agent_events_sse(
     return EventSourceResponse(event_generator())
 
 async def broadcast_switch_event(event_type: str, data: Dict[str, Any]):
-    """Dispatches a frame to all active agent SSE listeners."""
+    """Dispatches a frame to all active agent SSE listeners and internal listeners."""
     switch_state.cursor_counter += 1
     frame_id = str(switch_state.cursor_counter)
     data["cursor"] = switch_state.cursor_counter
@@ -234,7 +263,6 @@ async def post_room_message(
     """
     Switch Agent Protocol: Outbound message / Human incoming message
     POST /rooms/{room_id}/messages
-    Body: {"content": "...", "sender": "...", "platform": "discord", "thread_id": "..."}
     """
     content = payload.get("content", "")
     sender = payload.get("sender", "Alex (Creator)")
@@ -242,6 +270,8 @@ async def post_room_message(
     platform = payload.get("platform", "discord")
     thread_id = payload.get("thread_id", None)
     reply_to = payload.get("reply_to", None)
+    channel_id = payload.get("channel_id", None)
+    discord_message_id = payload.get("discord_message_id", None)
 
     msg_id = f"msg_{uuid.uuid4().hex[:10]}"
     message_record = {
@@ -253,11 +283,13 @@ async def post_room_message(
         "platform": platform,
         "thread_id": thread_id,
         "reply_to": reply_to,
+        "channel_id": channel_id,
+        "discord_message_id": discord_message_id,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     switch_state.messages.append(message_record)
 
-    # Broadcast event into Switch event stream for the agent
+    # 1. Broadcast event down to connected Agent via SSE stream
     event_payload = {
         "type": "room.message",
         "room_id": room_id,
@@ -268,9 +300,26 @@ async def post_room_message(
         "platform": platform,
         "thread_id": thread_id,
         "reply_to": reply_to,
+        "channel_id": channel_id,
+        "discord_message_id": discord_message_id,
         "is_agent_mention": ("@IdeaFlow" in content) or ("@ideaflow" in content.lower()) or (sender_type == "human")
     }
     await broadcast_switch_event("message", event_payload)
+
+    # 2. IF message was produced by Agent and bound to Discord, route to Discord Collaboration Bridge!
+    if sender_type in ("agent", "bot") and platform in ("discord", "switch"):
+        from backend.discord_bridge import discord_bridge
+        if discord_bridge.is_connected:
+            target_chan = channel_id or settings.DISCORD_CHANNEL_ID
+            if target_chan:
+                logger.info(f"Switch Hub routing agent response to Discord channel {target_chan}...")
+                asyncio.create_task(
+                    discord_bridge.send_discord_reply(
+                        channel_id=target_chan,
+                        content=content,
+                        reply_to_id=reply_to or discord_message_id
+                    )
+                )
 
     return {
         "status": "delivered",
@@ -280,7 +329,6 @@ async def post_room_message(
 
 @switch_router.get("/rooms/{room_id}/messages")
 async def get_room_messages(room_id: str):
-    """Returns conversation history in the Switch room."""
     room_msgs = [m for m in switch_state.messages if m["room_id"] == room_id]
     return {
         "room_id": room_id,

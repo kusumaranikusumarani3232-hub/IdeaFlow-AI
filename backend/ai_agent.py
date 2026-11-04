@@ -23,8 +23,16 @@ class CreativeProjectAgent:
         self.gemini_key = settings.GEMINI_API_KEY
         self.openai_key = settings.OPENAI_API_KEY
 
+    def set_keys(self, gemini_key: Optional[str] = None, openai_key: Optional[str] = None, provider: Optional[str] = None):
+        if gemini_key is not None:
+            self.gemini_key = gemini_key
+        if openai_key is not None:
+            self.openai_key = openai_key
+        if provider is not None:
+            self.provider = provider
+
     async def generate_completion(self, system_prompt: str, user_prompt: str) -> str:
-        """Flexible LLM gateway: Gemini -> OpenAI -> Built-in Creative Engine."""
+        """Flexible LLM gateway: Gemini -> OpenAI -> Dynamic Creative Engine."""
         # 1. Try Gemini if configured
         if self.gemini_key and (self.provider in ("auto", "gemini")):
             try:
@@ -42,7 +50,7 @@ class CreativeProjectAgent:
                         text = data["candidates"][0]["content"]["parts"][0]["text"]
                         return text
             except Exception as e:
-                logger.warning(f"Gemini generation error: {e}, falling back to built-in creative engine")
+                logger.warning(f"Gemini generation error: {e}, falling back to dynamic creative engine")
 
         # 2. Try OpenAI if configured
         if self.openai_key and (self.provider in ("auto", "openai")):
@@ -63,101 +71,160 @@ class CreativeProjectAgent:
                         data = resp.json()
                         return data["choices"][0]["message"]["content"]
             except Exception as e:
-                logger.warning(f"OpenAI generation error: {e}, falling back to built-in creative engine")
+                logger.warning(f"OpenAI generation error: {e}, falling back to dynamic creative engine")
 
-        # 3. Built-in High Quality Creative Project Intelligence Engine
-        return self._generate_builtin_creative_response(user_prompt)
+        # 3. Dynamic Creative Project Intelligence Engine (Algorithmic reasoning)
+        return self._generate_dynamic_creative_response(user_prompt)
 
-    def _generate_builtin_creative_response(self, prompt: str) -> str:
-        prompt_lower = prompt.lower()
-        if "nature" in prompt_lower or "wildlife" in prompt_lower or "youtube" in prompt_lower:
-            return (
-                "🌿 **Channel Identity: WildEcho Studios**\n\n"
-                "I've structured our creative project plan based on your vision!\n\n"
-                "**1. Brand Concept & Identity:**\n"
-                "- **Name Options:** WildEcho, TerraVisions, Canopy & Claw\n"
-                "- **Tagline:** *Unfiltered stories from Earth's quietest frontiers.*\n"
-                "- **Visual Style:** Cinematic 4K macro, organic moss/forest green palette (#2D5A27, #D9E4DD, #1A1A1A), sound-first Foley design.\n\n"
-                "**2. Content Roadmap (Season 1):**\n"
-                "- **Ep 1 (Pilot):** The Micro-Wilderness of Urban Green Spaces (10 mins)\n"
-                "- **Ep 2:** Predators of the Dusk: Night-vision forest ecology\n"
-                "- **Ep 3:** The Canopy Whisperers: Bird behavioral communications\n"
-                "- **Ep 4:** Monsoon Awakening: Amphibians & macro world\n\n"
-                "**3. Immediate Tasks Activated:**\n"
-                "- [Task] Finalize channel name & visual moodboard\n"
-                "- [Task] Draft Episode 1 script & B-roll shotlist\n"
-                "- [Task] Audio setup: Binaural microphone test for forest Foley\n\n"
-                "**4. Decision Recorded:**\n"
-                "- Decided on a *narrative-documentary* format over vlog style to maximize evergreen search value.\n\n"
-                "Would you like me to elaborate on the Episode 1 pilot script, or start breaking down the sound design gear list?"
-            )
-        elif "podcast" in prompt_lower:
-            return (
-                "🎙️ **Podcast Production Plan: The Creative Pulse**\n\n"
-                "- **Concept:** Deep-dive interviews with creators and innovators at the edge of craft.\n"
-                "- **Format:** 45-minute bi-weekly audio & video podcast.\n"
-                "- **Tasks Added:** Intro music curation, guest outreach template, RSS feed hosting setup.\n"
-                "- **Decision:** Dual-track recording on local hardware to prevent latency dropouts."
-            )
+    def _analyze_creative_prompt(self, prompt: str) -> Dict[str, Any]:
+        """Extracts domain, keywords, tone, visual palette, and concept structure from any prompt."""
+        p = prompt.lower()
+        
+        # Detect domain / category
+        if any(w in p for w in ["youtube", "video", "film", "documentary", "vlog", "channel", "camera", "cinema", "show"]):
+            domain = "video"
+        elif any(w in p for w in ["podcast", "audio", "radio", "interview", "host", "soundtrack"]):
+            domain = "podcast"
+        elif any(w in p for w in ["game", "indie", "unity", "unreal", "mechanic", "steam", "rpg", "pixel"]):
+            domain = "game"
+        elif any(w in p for w in ["book", "novel", "write", "story", "manuscript", "fiction"]):
+            domain = "writing"
+        elif any(w in p for w in ["brand", "studio", "fashion", "apparel", "coffee", "agency"]):
+            domain = "brand"
         else:
-            return (
-                f"✨ **IdeaFlow Project Plan: {prompt[:40]}...**\n\n"
-                "I've analyzed your creative request and turned it into an actionable project architecture.\n\n"
-                "- **Core Concept Defined:** Clarified core audience and distinctive value proposition.\n"
-                "- **Roadmap Milestones:** Established Phase 1 discovery, Phase 2 creative production, Phase 3 distribution.\n"
-                "- **Tasks Created:** Generated 4 prioritized action items in your workspace.\n"
-                "- **Next Step:** Review the generated draft in your project workspace."
-            )
+            domain = "creative"
+
+        # Theme & Palette extraction
+        if any(w in p for w in ["nature", "wildlife", "animal", "forest", "ocean", "plant", "earth"]):
+            theme = "Nature & Wildlife"
+            title_prefix = "WildEcho"
+            palette = "Forest Green (#1B4332), Warm Ochre (#DDA15E), Mist Grey (#E9ECEF)"
+            audience = "Nature and wildlife lovers, slow-media documentary enthusiasts, outdoor creators aged 18-45"
+            tagline = "Unfiltered stories from Earth's quietest frontiers."
+            style = "Cinematic 4K macro, organic field Foley, slow atmospheric pans."
+        elif any(w in p for w in ["cyberpunk", "sci-fi", "space", "robot", "future", "tech", "quantum", "neon", "ai"]):
+            theme = "Sci-Fi & Deep Tech"
+            title_prefix = "NeoCircuit"
+            palette = "Cyber Cyan (#00F0FF), Neon Violet (#7928CA), Deep Obsidian (#0D0E15)"
+            audience = "Tech futurists, sci-fi worldbuilders, developers, and speculative fiction readers"
+            tagline = "Transmitting from the edge of human and synthetic evolution."
+            style = "High-contrast anamorphic lighting, glitch aesthetics, sub-bass synth soundscapes."
+        elif any(w in p for w in ["horror", "mystery", "thriller", "dark", "abandoned"]):
+            theme = "Psychological Thriller"
+            title_prefix = "ShadowVeil"
+            palette = "Midnight Charcoal (#12131C), Crimson Rust (#8B0000), Pale Ash (#D1D5DB)"
+            audience = "Horror and suspense aficionados, investigative storytelling followers"
+            tagline = "Exploring the mysteries that daylight leaves behind."
+            style = "Low-key chiaroscuro lighting, binaural micro-creaks, psychological pacing."
+        elif any(w in p for w in ["game", "rpg", "indie"]):
+            theme = "Interactive Game Design"
+            title_prefix = "AetherQuest"
+            palette = "Arcane Gold (#F59E0B), Deep Slate (#1E293B), Astral Indigo (#6366F1)"
+            audience = "Indie game players, narrative adventure enthusiasts, Steam gamers"
+            tagline = "Every choice fractures reality. Every secret demands sacrifice."
+            style = "Stylized environmental storytelling, diegetic UI, adaptive orchestral soundtrack."
+        else:
+            # Clean prompt extraction for general projects
+            clean_title = re.sub(r'^(i want to|create a|launch a|start a|build a|design a)\s+', '', prompt, flags=re.IGNORECASE).strip()
+            clean_title = clean_title.capitalize()[:35]
+            theme = "Creative Project"
+            title_prefix = clean_title or "IdeaFlow Project"
+            palette = "Emerald Core (#10B981), Electric Teal (#14B8A6), Void Black (#0F172A)"
+            audience = "Curious creators, culture enthusiasts, and modern creative professionals"
+            tagline = f"Transforming {prompt[:30]} into reality."
+            style = "Contemporary luxury, high-definition pacing, polished sound and typography."
+
+        return {
+            "domain": domain,
+            "theme": theme,
+            "title": f"{title_prefix} – {theme}" if "–" not in title_prefix else title_prefix,
+            "palette": palette,
+            "audience": audience,
+            "tagline": tagline,
+            "style": style
+        }
+
+    def _generate_dynamic_creative_response(self, prompt: str) -> str:
+        meta = self._analyze_creative_prompt(prompt)
+        
+        return (
+            f"✨ **Project Architecture: {meta['title']}**\n\n"
+            f"I have structured our collaborative production plan based on your vision:\n\n"
+            f"**1. Core Identity & Creative Direction:**\n"
+            f"- **Project Name:** {meta['title']}\n"
+            f"- **Tagline:** *{meta['tagline']}*\n"
+            f"- **Visual Palette:** {meta['palette']}\n"
+            f"- **Audience Target:** {meta['audience']}\n"
+            f"- **Production Aesthetic:** {meta['style']}\n\n"
+            f"**2. Content & Production Roadmap:**\n"
+            f"- **Phase 1 (Discovery & Styleguide):** Finalize visual identity, moodboard, and pilot concept.\n"
+            f"- **Phase 2 (Pilot Production):** Core capture/creation for the inaugural release.\n"
+            f"- **Phase 3 (Post-Production & Polish):** Master grade, sound design mixing, and editorial pacing.\n"
+            f"- **Phase 4 (Launch & Distribution):** Metadata optimization, platform release, and audience outreach.\n\n"
+            f"**3. Actionable Tasks Activated in Workspace:**\n"
+            f"- [Task] Finalize brand identity guide and color swatch assets\n"
+            f"- [Task] Complete Pilot Script / Prototype Outline\n"
+            f"- [Task] Hardware & Audio engineering checklist\n"
+            f"- [Task] Distribution platform setup and SEO optimization\n\n"
+            f"**4. Strategic Decision Recorded:**\n"
+            f"- Selected high-retention narrative storytelling format to maximize evergreen audience engagement.\n\n"
+            f"Would you like me to elaborate on the Pilot Script draft, or fine-tune the task priorities in your workspace?"
+        )
 
     async def process_project_request(self, user_content: str, project_id: Optional[str] = None, sender_name: str = "Alex") -> Dict[str, Any]:
         """
         Turns a human idea sent through Discord/Switch into a full creative project:
-        - Creates/updates Project record
-        - Generates Tasks across production stages
-        - Generates Strategic Decisions
+        - Creates/updates Project record with customized identity & palette
+        - Generates custom Tasks matching the project topic
+        - Generates Strategic Decisions matching the domain
         - Generates Pilot Creative Draft (Script / Outline)
         - Returns structured agent response
         """
         db = SessionLocal()
         try:
+            meta = self._analyze_creative_prompt(user_content)
+
             # 1. Determine or create project
             project = None
             if project_id:
                 project = db.query(Project).filter(Project.id == project_id).first()
             
             if not project:
-                # Find active project or create one
                 project = db.query(Project).filter(Project.status != "completed").first()
             
-            is_nature = any(k in user_content.lower() for k in ["nature", "wildlife", "youtube", "forest", "animal"])
-            
-            if not project:
-                title = "WildEcho – Nature & Wildlife Channel" if is_nature else f"Creative Project: {user_content[:30]}..."
-                concept = user_content
-                category = "video" if "youtube" in user_content.lower() or "video" in user_content.lower() else "creative"
-                
-                roadmap = [
-                    {"phase": "Pre-Production", "milestone": "Channel Identity & Visual Branding", "timeline": "Week 1", "status": "in_progress"},
-                    {"phase": "Production", "milestone": "Pilot Episode Filming (Urban Green Spaces)", "timeline": "Week 2-3", "status": "pending"},
-                    {"phase": "Post-Production", "milestone": "4K Color Grade & Binaural Sound Mixing", "timeline": "Week 4", "status": "pending"},
-                    {"phase": "Launch", "milestone": "Channel Launch & First 3 Videos Live", "timeline": "Week 5", "status": "pending"}
-                ]
+            roadmap = [
+                {"phase": "Pre-Production", "milestone": "Identity & Brand Style Guide", "timeline": "Week 1", "status": "in_progress"},
+                {"phase": "Production", "milestone": "Pilot Production & Core Capture", "timeline": "Week 2-3", "status": "pending"},
+                {"phase": "Post-Production", "milestone": "Master Grade & Binaural Sound Mixing", "timeline": "Week 4", "status": "pending"},
+                {"phase": "Launch", "milestone": "Official Launch & Multi-Channel Distribution", "timeline": "Week 5", "status": "pending"}
+            ]
 
+            if not project:
                 project = Project(
-                    title=title,
-                    concept=concept,
-                    category=category,
+                    title=meta["title"],
+                    concept=user_content,
+                    category=meta["domain"],
                     status="in_progress",
-                    progress=25,
-                    target_audience="Wildlife lovers, slow-media enthusiasts, documentary watchers aged 18-45",
-                    visual_identity="Earth tones: Deep Forest Green (#1B4332), Warm Ochre (#DDA15E), Mist Grey (#E9ECEF). Atmospheric, cinematic, slow-panning 4K macro.",
+                    progress=30,
+                    target_audience=meta["audience"],
+                    visual_identity=f"Palette: {meta['palette']}. Aesthetic: {meta['style']}",
                     content_roadmap=json.dumps(roadmap),
-                    summary="A cinematic nature and wildlife documentary channel focusing on high-definition micro-habitats and immersive environmental storytelling.",
+                    summary=f"A dedicated {meta['domain']} project focused on {meta['theme']}. {meta['tagline']}",
                     switch_room_id=settings.SWITCH_ROOM_ID
                 )
                 db.add(project)
                 db.commit()
                 db.refresh(project)
+            else:
+                # Update existing project context if a new major vision is submitted
+                if len(user_content) > 20 and any(w in user_content.lower() for w in ["launch", "start", "create", "build", "project", "channel"]):
+                    project.title = meta["title"]
+                    project.concept = user_content
+                    project.category = meta["domain"]
+                    project.target_audience = meta["audience"]
+                    project.visual_identity = f"Palette: {meta['palette']}. Aesthetic: {meta['style']}"
+                    project.summary = f"A dedicated {meta['domain']} project focused on {meta['theme']}. {meta['tagline']}"
+                    db.commit()
 
             # 2. Add incoming human chat message
             human_msg = ChatMessage(
@@ -170,45 +237,45 @@ class CreativeProjectAgent:
             db.add(human_msg)
             db.commit()
 
-            # 3. Create or enrich Tasks if none exist or if new instructions arrived
+            # 3. Create or enrich Tasks customized to this domain
             existing_tasks_count = db.query(Task).filter(Task.project_id == project.id).count()
-            if existing_tasks_count == 0 or "task" in user_content.lower() or "plan" in user_content.lower():
+            if existing_tasks_count < 3 or "task" in user_content.lower() or "plan" in user_content.lower():
                 tasks_data = [
                     {
-                        "title": "Establish Visual Identity & Brand Style Guide",
-                        "description": "Select typography (cinematic serif + clean sans), color palette (forest green, stone grey), and channel banner artwork.",
+                        "title": f"Establish {meta['title']} Brand Style Guide",
+                        "description": f"Formulate typography, visual moodboard with {meta['palette']}, and channel banner art.",
                         "category": "branding",
                         "priority": "high",
                         "status": "in_progress",
                         "assigned_to": "Collaborative"
                     },
                     {
-                        "title": "Write Episode 1 Script: 'Secrets of Urban Wilds'",
-                        "description": "Complete full audio-visual screenplay including opening hook, micro-habitat sequences, and conservation takeaway.",
+                        "title": f"Write Pilot Script & Storyboard for {meta['theme']}",
+                        "description": "Complete full audio-visual screenplay including opening hook, thematic sequences, and audience call to action.",
                         "category": "pre-production",
                         "priority": "high",
                         "status": "review",
                         "assigned_to": "IdeaFlow Agent"
                     },
                     {
-                        "title": "Field Equipment & Audio Setup Checklist",
-                        "description": "Configure Sony A7SIII / FX3, 90mm Macro lens, Rode NTG5 shotgun mic, and wind protection for outdoor ambient recording.",
+                        "title": "Equipment, Audio Rig & Software Checklist",
+                        "description": "Configure capture hardware, specialized microphones, and post-production template presets.",
                         "category": "production",
                         "priority": "medium",
                         "status": "todo",
-                        "assigned_to": "Alex (Creator)"
+                        "assigned_to": sender_name
                     },
                     {
-                        "title": "Create Sound Design Template (Binaural Forest Foley)",
-                        "description": "Build an audio preset bank with bird calls, wind rustle, stream ambiance, and sub-bass impact moments.",
+                        "title": "Acoustic Foley & Sound Design Template",
+                        "description": f"Build audio preset bank matching {meta['style']}, with bespoke intro and transition audio.",
                         "category": "post-production",
                         "priority": "medium",
                         "status": "todo",
                         "assigned_to": "IdeaFlow Agent"
                     },
                     {
-                        "title": "YouTube Channel Optimization & SEO Strategy",
-                        "description": "Draft channel bio, 15 high-ranking tags (#wildlife, #naturedocumentary, #cinematicnature), and thumbnail templates with high-contrast text.",
+                        "title": "Distribution Optimization & SEO Discovery Strategy",
+                        "description": "Draft platform bio, high-ranking discovery tags, and thumbnail templates with high visual hierarchy.",
                         "category": "distribution",
                         "priority": "medium",
                         "status": "todo",
@@ -228,28 +295,28 @@ class CreativeProjectAgent:
                     db.add(task)
                 db.commit()
 
-            # 4. Record Key Decisions
+            # 4. Record Key Decisions customized to domain
             existing_decisions = db.query(Decision).filter(Decision.project_id == project.id).count()
-            if existing_decisions == 0:
+            if existing_decisions < 2:
                 decisions_data = [
                     {
-                        "title": "Cinematic Documentary vs. Talking Head Vlog",
-                        "decision": "Adopt a 100% immersive documentary narrative style with voiceover narration rather than on-camera talking head.",
-                        "rationale": "Nature viewers prioritize visual immersion, sound design, and soothing narration over creator-centric drama.",
+                        "title": f"Production Format for {meta['theme']}",
+                        "decision": f"Adopt a {meta['style']} format focusing on high retention storytelling.",
+                        "rationale": f"Audience data shows that {meta['audience']} prioritize immersion and polished aesthetics over rushed daily uploads.",
                         "category": "Identity",
                         "decided_by": "Consensus"
                     },
                     {
-                        "title": "Bi-Weekly Release Schedule",
-                        "decision": "Publish high-production episodes every two weeks on Sunday mornings at 9:00 AM EST.",
-                        "rationale": "High-fidelity 4K nature cinematography requires extensive color grading and Foley mixing; bi-weekly ensures consistent quality.",
+                        "title": "Episodic Release Cadence",
+                        "decision": "Commit to a bi-weekly publishing schedule with strict quality standards.",
+                        "rationale": "Ensures sufficient time for color grading, Foley mixing, and comprehensive promotion per release.",
                         "category": "Schedule",
                         "decided_by": "Human"
                     },
                     {
-                        "title": "Audio-First Production Philosophy",
-                        "decision": "Invest equal time into sound design and natural Foley recording as visual capture.",
-                        "rationale": "In nature videos, pristine 3D audio accounts for over 60% of viewer retention and emotional resonance.",
+                        "title": "Audio-First Immersion Priority",
+                        "decision": "Dedicate at least 40% of production effort to pristine binaural audio and sound design.",
+                        "rationale": "High-fidelity sound design creates emotional resonance and boosts completion rates across platforms.",
                         "category": "Content",
                         "decided_by": "IdeaFlow Agent"
                     }
@@ -266,37 +333,33 @@ class CreativeProjectAgent:
                     db.add(decision)
                 db.commit()
 
-            # 5. Create Pilot Creative Draft (Script)
+            # 5. Create Customized Pilot Creative Draft (Script / Outline)
             existing_drafts = db.query(CreativeDraft).filter(CreativeDraft.project_id == project.id).count()
-            if existing_drafts == 0 or "script" in user_content.lower():
+            if existing_drafts == 0 or "script" in user_content.lower() or "draft" in user_content.lower():
                 pilot_script = (
-                    "# Episode 01: Secrets of the Urban Wilderness\n"
-                    "**Runtime:** 8-10 Minutes | **Pacing:** Atmospheric & Contemplative\n\n"
+                    f"# {meta['title']} – Pilot Episode\n"
+                    f"**Topic:** {meta['theme']} | **Pacing:** {meta['style']}\n\n"
                     "---\n\n"
-                    "### [00:00 - 00:30] Cold Open: The Invisible Jungle\n"
-                    "**[VISUAL - 4K Macro 120fps]:**\n"
-                    "Extreme close-up of a single blade of dew-covered grass in a city park. A solitary jumping spider (*Salticidae*) turns its iridescent eyes directly toward the lens.\n\n"
+                    "### [00:00 - 00:45] Cold Open: The Catalyst\n"
+                    "**[VISUAL - Macro 4K Anamorphic]:**\n"
+                    f"Atmospheric opening sequence framing the central subject of {meta['theme']}. Dynamic camera movement with high-contrast color grade.\n\n"
                     "**[AUDIO]:**\n"
-                    "Distant, muffled city siren fades out. Crystal-clear sound of water drop dripping, crisp wind rustle, and high-frequency heartbeat pulse.\n\n"
-                    "**[NARRATION (Calm, grounding tone)]:**\n"
-                    "> \"We build concrete canyons to keep the wild at bay. But right beneath the pavement, under the flickering neon, life refuses to surrender. Welcome to the unseen wilderness... in our own backyards.\"\n\n"
+                    "Sub-bass frequency swell fades up. Crisp environmental Foley layers pan left-to-right with binaural clarity.\n\n"
+                    "**[NARRATION / DIALOGUE]:**\n"
+                    f"> \"{meta['tagline']} What begins as a single spark of curiosity becomes a journey into the uncharted.\"\n\n"
                     "---\n\n"
-                    "### [00:30 - 02:15] Sequence 1: The Canopy Above the Concrete\n"
+                    "### [00:45 - 03:00] Act I: The Landscape Unfolds\n"
                     "**[VISUAL]:**\n"
-                    "Slow upward drone tilt from high-rise glass tower to a lush oak canopy nestled in an urban park. Cut to handheld telephoto of a red-tailed hawk nesting on an air conditioning unit.\n\n"
+                    f"Wide establishing vista. Cut to tight macro details emphasizing {meta['palette']}.\n\n"
                     "**[AUDIO]:**\n"
-                    "Binaural hawk cry echoed against stone walls. Soft, ambient acoustic guitar underscore begins.\n\n"
-                    "**[NARRATION]:**\n"
-                    "> \"Adaptation is not an accident—it is poetry in motion. Here, thirty floors above rush-hour traffic, an apex predator finds sanctuary.\"\n\n"
-                    "---\n\n"
-                    "### [02:15 - End Hook]\n"
+                    "Harmonic acoustic and ambient synthesizer score introduces the primary theme.\n\n"
                     "**[PRODUCTION NOTES]:**\n"
-                    "- *Color Palette:* Grade with Kodak 2383 LUT emulation, emphasizing rich greens and warm morning sunlight.\n"
-                    "- *Deliverable:* Export master in 3840x2160 ProRes 422 HQ."
+                    f"- Target Audience: {meta['audience']}\n"
+                    "- Master Export: 4K UHD ProRes 422 HQ with 24-bit 48kHz audio."
                 )
                 draft = CreativeDraft(
                     project_id=project.id,
-                    title="Episode 01 Pilot Script – 'Secrets of the Urban Wilderness'",
+                    title=f"Pilot Script – {meta['theme']}",
                     draft_type="script",
                     content=pilot_script,
                     version=1
@@ -304,7 +367,7 @@ class CreativeProjectAgent:
                 db.add(draft)
                 db.commit()
 
-            # 6. Generate agent response text
+            # 6. Generate agent response text using LLM or dynamic creative engine
             system_prompt = (
                 "You are IdeaFlow Agent, an elite AI creative project manager and collaborator. "
                 "You collaborate with humans through Switch and Discord to build world-class creative projects. "
@@ -322,8 +385,8 @@ class CreativeProjectAgent:
             )
             db.add(agent_msg)
             
-            # Update project progress
-            project.progress = min(project.progress + 15, 85)
+            # Advance project progress
+            project.progress = min(project.progress + 15, 90)
             db.commit()
 
             return {
