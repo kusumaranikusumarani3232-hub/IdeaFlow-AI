@@ -5,6 +5,7 @@ import json
 
 # Ensure stdout uses UTF-8 on Windows
 sys.stdout.reconfigure(encoding='utf-8')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from backend.config import settings
 from backend.switch_hub import switch_state
@@ -21,7 +22,9 @@ async def run_comprehensive_audit():
     # ---------------------------------------------------------
     # CHECK 1: Switch Topology & Distinction (Built-in vs External)
     # ---------------------------------------------------------
-    print("\n[CHECK 1] Switch Core Topology & Identification:")
+    print("\n[CHECK 1] Switch Core Topology & Identification (Built-in Hub Mode):")
+    switch_client.switch_url = "http://localhost:8000/switch/api"
+    switch_client.agent_id = settings.AGENT_ID
     print(f"  Target Switch URL: {switch_client.switch_url}")
     print(f"  Is Built-in Hub Engine: {switch_client.is_builtin_hub}")
     print(f"  Hub Designation: {'Built-in Embedded Hub Engine' if switch_client.is_builtin_hub else 'External Switch Server'}")

@@ -2,7 +2,7 @@ import React from 'react';
 import { Sparkles, Radio, MessageSquare, Terminal, FolderKanban, CheckCircle2, Settings2 } from 'lucide-react';
 
 export default function Navbar({ activeTab, setActiveTab, switchStatus, discordStatus, demoMode, setDemoMode }) {
-  const isSwitchOnline = switchStatus?.is_connected ?? true;
+  const isSwitchOnline = Boolean(switchStatus?.is_connected);
   const isDiscordLive = discordStatus?.is_connected ?? false;
 
   const navItems = [
@@ -65,15 +65,14 @@ export default function Navbar({ activeTab, setActiveTab, switchStatus, discordS
           {/* Switch Status Badge with Mode distinction */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs">
             <span className="relative flex h-2 w-2">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSwitchOnline ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isSwitchOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isSwitchOnline ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isSwitchOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             </span>
             <span className="text-slate-400 font-mono text-[11px]">Switch:</span>
-            <span className={`font-semibold font-mono text-[11px] ${isSwitchOnline ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {switchStatus?.is_builtin ? 'Built-in Hub' : 'External Server'}
+            <span className={`font-semibold font-mono text-[11px] ${isSwitchOnline ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {switchStatus?.is_builtin ? 'Built-in Hub' : (isSwitchOnline ? 'Official Switch (Live)' : 'External (Offline)')}
             </span>
           </div>
-
 
           {/* Discord Status Badge */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 border border-slate-700/60 text-xs">
@@ -84,15 +83,15 @@ export default function Navbar({ activeTab, setActiveTab, switchStatus, discordS
             </span>
           </div>
 
-          {/* Demo Mode Toggle */}
+          {/* Demo Mode Status Indicator */}
           <button
             onClick={() => setDemoMode(!demoMode)}
             className={`px-2 py-1 rounded-md text-[11px] font-mono border transition-all ${
               demoMode
                 ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
-                : 'bg-slate-800 text-slate-400 border-slate-700'
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
             }`}
-            title="Toggle Demo Mode sandbox simulation"
+            title={demoMode ? "Demo simulation active" : "Real External Switch Integration Active"}
           >
             Demo: {demoMode ? 'ON' : 'OFF'}
           </button>

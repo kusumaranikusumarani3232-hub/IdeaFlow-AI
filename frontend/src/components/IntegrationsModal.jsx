@@ -7,7 +7,7 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
   const [testResult, setTestResult] = useState(null);
 
   // Runtime config form states
-  const [switchUrl, setSwitchUrl] = useState(switchStatus?.switch_url || 'http://localhost:8000/switch/api');
+  const [switchUrl, setSwitchUrl] = useState(switchStatus?.switch_url || 'http://127.0.0.1:64008');
   const [discordToken, setDiscordToken] = useState('');
   const [channelId, setChannelId] = useState(discordStatus?.channel_id || '');
   const [geminiKey, setGeminiKey] = useState('');
@@ -78,10 +78,16 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
           </div>
           <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full border ${
             switchStatus?.is_builtin
-              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-              : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20'
+              ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+              : (switchStatus?.is_connected
+                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-300 border-rose-500/20')
           }`}>
-            {switchStatus?.is_builtin ? '● Active: Built-in Hub Engine' : '○ Active: External Switch Server'}
+            {switchStatus?.is_builtin
+              ? '● Active: Built-in Hub Engine'
+              : (switchStatus?.is_connected
+                ? '● Active: Official Switch (Live)'
+                : '○ Inactive: External Switch (Offline)')}
           </span>
         </div>
 
@@ -92,6 +98,17 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
         <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
+            onClick={() => setSwitchUrl('http://127.0.0.1:64008')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
+              !switchUrl.includes('/switch/api')
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
+            }`}
+          >
+            Connect to Official Switch Server (http://127.0.0.1:64008)
+          </button>
+          <button
+            type="button"
             onClick={() => setSwitchUrl('http://localhost:8000/switch/api')}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
               switchUrl.includes('/switch/api')
@@ -99,18 +116,7 @@ export default function IntegrationsModal({ switchStatus, discordStatus, onRefre
                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
             }`}
           >
-            Use Built-in Hub Engine (Default)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSwitchUrl('http://localhost:8000')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-all ${
-              !switchUrl.includes('/switch/api')
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-            }`}
-          >
-            Point to External Switch Server
+            Use Built-in Hub Engine (Dev Mode)
           </button>
         </div>
       </div>

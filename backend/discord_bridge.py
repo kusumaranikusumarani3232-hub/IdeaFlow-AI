@@ -64,11 +64,11 @@ class DiscordBridge:
                 if self.client.user:
                     content = content.replace(f"<@{self.client.user.id}>", "@IdeaFlow").strip()
 
-                room_id = settings.SWITCH_ROOM_ID
+                from backend.switch_client import switch_client
+                room_id = switch_client.room_id or settings.SWITCH_ROOM_ID
                 thread_id = str(message.channel.id) if isinstance(message.channel, discord.Thread) else None
 
                 # Relay real Discord message into Switch Room over official protocol
-                from backend.switch_client import switch_client
                 await switch_client.post_human_message_to_switch(
                     room_id=room_id,
                     content=content,

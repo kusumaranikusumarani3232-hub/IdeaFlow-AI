@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -201,8 +202,10 @@ seed_demo_data()
 
 # Event Handler: Links Switch SSE stream directly to AI Agent & Project updates
 async def handle_switch_incoming_event(event: dict):
-    """Fires when Switch pushes an SSE frame (e.g. from Discord)."""
-    if event.get("type") == "room.message" and event.get("sender_type") == "human":
+    """Fires when Switch pushes an SSE frame or inbound room message."""
+    event_type = event.get("type", "")
+    sender_type = event.get("sender_type", "human")
+    if (event_type in ("room.message", "message")) and (sender_type in ("human", "user", None)):
         content = event.get("content", "")
         sender = event.get("sender", "Alex")
         logger.info(f"Switch Agent received message from {sender}: {content[:50]}...")
@@ -210,8 +213,8 @@ async def handle_switch_incoming_event(event: dict):
         # Process project request via AI agent
         res = await ai_agent.process_project_request(content, sender_name=sender)
         
-        # Reply back through Switch Room
-        room_id = event.get("room_id", settings.SWITCH_ROOM_ID)
+        # Reply back through Switch Room over official agent protocol
+        room_id = event.get("room_id") or switch_client.room_id or settings.SWITCH_ROOM_ID
         await switch_client.post_room_message(
             room_id=room_id,
             content=res["response_text"],
@@ -277,11 +280,16 @@ app.include_router(ai_routes.router)
 
 @app.get("/api/health")
 def health_check():
+    is_connected = switch_client.is_connected
+    if not switch_client.is_builtin_hub and switch_client.last_beat_time:
+        beat_age = (datetime.now(timezone.utc) - switch_client.last_beat_time).total_seconds()
+        if beat_age < 15.0 and switch_client.generation is not None:
+            is_connected = True
     return {
         "status": "healthy",
         "app": settings.PROJECT_NAME,
         "version": settings.VERSION,
-        "switch_bridge": "connected" if switch_client.is_connected else "active",
+        "switch_bridge": "connected" if is_connected else "active",
         "switch_agent_id": switch_client.agent_id,
         "discord_status": discord_bridge.status_message,
         "demo_mode": settings.DEMO_MODE

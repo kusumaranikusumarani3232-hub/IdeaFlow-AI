@@ -94,22 +94,34 @@ export default function SwitchInspector({ switchStatus, onRefreshStatus }) {
         {/* Protocol Spec Telemetry Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800 font-mono text-xs">
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-500 text-[10px] block">SWITCH ENGINE MODE</span>
-            <span className="text-emerald-400 font-semibold truncate block">
-              {switchStatus?.is_builtin ? '● Built-in Hub Engine' : '○ External Official Switch'}
+            <span className="text-slate-500 text-[10px] block">SWITCH ENGINE STATUS</span>
+            <span className={`font-semibold truncate block ${
+              switchStatus?.is_builtin
+                ? 'text-amber-400'
+                : (switchStatus?.is_connected ? 'text-emerald-400' : 'text-rose-400')
+            }`}>
+              {switchStatus?.is_builtin
+                ? '● Built-in Hub (Dev)'
+                : (switchStatus?.is_connected ? '● Official Switch (Live)' : '○ External (Offline)')}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
             <span className="text-slate-500 text-[10px] block">AGENT ID</span>
-            <span className="text-white font-semibold truncate block">{switchStatus?.agent_id || 'agent_ideaflow_creative_01'}</span>
+            <span className="text-white font-semibold truncate block" title={switchStatus?.agent_id}>
+              {switchStatus?.agent_id || 'ideaflow-agent'}
+            </span>
           </div>
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-500 text-[10px] block">TRANSPORT</span>
-            <span className="text-emerald-400 font-semibold block">SSE (Down) + HTTP (Up)</span>
+            <span className="text-slate-500 text-[10px] block">TRANSPORT & FENCE</span>
+            <span className="text-emerald-400 font-semibold truncate block">
+              SSE + Beat {switchStatus?.generation ? `(Gen #${switchStatus.generation})` : ''}
+            </span>
           </div>
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-500 text-[10px] block">CONNECTION MODEL</span>
-            <span className="text-cyan-400 font-semibold block">{switchStatus?.connection_model || 'always_on'}</span>
+            <span className="text-slate-500 text-[10px] block">SWITCH ROOM ID</span>
+            <span className="text-purple-400 font-semibold truncate block" title={switchStatus?.room_id}>
+              {switchStatus?.room_id || 'Active'}
+            </span>
           </div>
         </div>
 

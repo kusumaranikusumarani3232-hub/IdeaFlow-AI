@@ -128,10 +128,14 @@ export default function DashboardOverview({
         <div className="glass-panel p-5 rounded-xl border border-slate-800/80 hover:border-slate-700/80 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-medium uppercase tracking-wider">Switch Heartbeats</span>
-            <Radio className="w-4 h-4 text-emerald-400" />
+            <Radio className={`w-4 h-4 ${switchStatus?.is_connected ? 'text-emerald-400 animate-pulse' : 'text-rose-400'}`} />
           </div>
-          <div className="text-2xl font-bold text-white font-mono">Every 8s</div>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">Status: 200 OK (Active)</p>
+          <div className="text-2xl font-bold text-white font-mono">
+            {switchStatus?.is_builtin ? 'Every 8s' : 'Every 2.5s'}
+          </div>
+          <p className={`text-[11px] font-mono mt-1 ${switchStatus?.is_connected ? 'text-emerald-400' : 'text-rose-400'}`}>
+            Status: {switchStatus?.is_connected ? '200 OK (Active)' : 'Disconnected (Offline)'}
+          </p>
         </div>
       </div>
 

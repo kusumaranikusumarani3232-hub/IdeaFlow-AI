@@ -21,7 +21,7 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [switchStatus, setSwitchStatus] = useState(null);
   const [discordStatus, setDiscordStatus] = useState(null);
-  const [demoMode, setDemoMode] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Load projects and statuses
@@ -35,6 +35,9 @@ export default function App() {
       setProjects(projs);
       setSwitchStatus(swStatus);
       setDiscordStatus(dcStatus);
+      if (swStatus) {
+        setDemoMode(swStatus.is_builtin ? Boolean(swStatus.demo_mode) : false);
+      }
 
       // Select active project
       const currentId = selectedProjectId || projs[0]?.id;
